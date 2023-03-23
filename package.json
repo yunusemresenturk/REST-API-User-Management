@@ -4,11 +4,13 @@
   "main": "index.js",
   "dependencies": {
     "express": "^4.18.2",
+    "fs": "0.0.1-security",
     "joi": "^17.8.4",
     "lodash": "^4.17.21",
     "morgan": "^1.10.0",
     "morgan-body": "^2.6.8",
     "nodemon": "^2.0.21",
+    "promised-sqlite3": "^1.2.0",
     "sqlite3": "^5.1.6"
   },
   "devDependencies": {},
@@ -16,6 +18,9 @@
     "start": "node index.js",
     "server": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "keywords": [],
   "author": "",

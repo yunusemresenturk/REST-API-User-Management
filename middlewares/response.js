@@ -1,13 +1,18 @@
-const responseMiddleware = (req, res, next) => {
-  res.success = (data) => {
-    res.status(200).send({ success: true, data: data })
-  }
+module.exports = ((req, res, next) => {
+  res.success = (data, message) => {
+    res.status(200).json({
+      success: true,
+      message: message,
+      data: data
+    });
+  },
 
-  res.fail = () => {
-    res.status(400).send({ success: false, message: req.message })
-  }
+    res.fail = (message) => {
+      res.status(400).json({
+        success: false,
+        message: message,
+      });
+    };
 
-  next()
-}
-
-module.exports = responseMiddleware;
+  next();
+});

@@ -1,10 +1,11 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { PromisedDatabase } = require('promised-sqlite3');
+const { promisify } = require('util');
 const Joi = require('joi');
-
-
 const router = express.Router();
-const db = new sqlite3.Database('User.db');
+const db = new PromisedDatabase();
+
+
 
 // JOI Şeması
 const userSchema = Joi.object({
@@ -14,81 +15,97 @@ const userSchema = Joi.object({
 
 // GET - Tüm Kullanıcılar
 router.get('/', async (req, res) => {
-  const users = await db.all('SELECT * FROM users')
-  res.success(users);
-})
-
+  try {
+    await db.open('User.db');
+    await db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, surname TEXT NOT NULL)");
+    const data = await db.all('SELECT * FROM users');
+    res.success(data, messages.Successful);
+  } catch (err) {
+    res.fail(messages.Try_Again);
+  }
+});
 
 // GET - Kullanıcı ID'sine Göre Getir
 router.get('/:id', async (req, res) => {
-  const { id } = req.params
-  const user = await db.get('SELECT * FROM users WHERE id = ?', id)
-  if (user) {
-    res.success(user)
-  } else {
-    res.fail(`User with id ${id} not found`)
+  try {
+    const id = req.params.id;
+    await db.open('User.db');
+    const data = await db.get(`SELECT * FROM users WHERE id = ?`, [id]);
+    if (data)
+      return res.success(data, messages.Successful);
+    return res.fail(messages.NotFound);
+  } catch (err) {
+    res.fail(messages.Error);
   }
-})
+});
 
 // GET - İsme Göre Filtreleme
-router.get('/search/:name', (req, res, next) => {
-  const name = req.params.name;
-  
-  db.all(`SELECT * FROM users WHERE name LIKE '${name}%'`, (err, rows) => {
-    if (err) {
-      console.error('Error executing query: ' + err.message);
-      return res.status(500).json({
-        error: 'Could not retrieve users'
-      });
-    }
-    return res.status(200).json(rows);
-  });
+router.get('/search/:name', async (req, res) => {
+  try {
+    const name = req.params.name;
+    await db.open('User.db');
+    const data = await db.all(`SELECT * FROM users WHERE name LIKE '${name}%'`);
+    res.success(data, messages.Successful);
+  } catch (err) {
+    res.fail(messages.Try_Again);
+  } finally {
+    await db.close();
+  }
 });
 
 // POST - Kullanıcı Oluşturma
-router.post('/', async (req, res, next) => {
-  const { name, surname } = req.body;
-
+router.post('/', async (req, res) => {
   try {
-    await userSchema.validateAsync({ name, surname})
-    const result = await db.run(
-      'INSERT INTO users (name, surname) VALUES (?, ?)',
-      [name, surname])
-    const user = await db.get('SELECT * FROM users WHERE id = ?', result.lastID)
-    res.success(user)
+    const { name, surname } = req.body;
+    const { error } = userSchema.validate({ name, surname });
+    if (error)
+      return res.fail(messages.Try_Again);
+    await db.open('User.db');
+    const data = await db.run(`INSERT INTO users(name, surname) VALUES(?, ?)`, [name, surname]);
+    res.success(data, messages.Successful);
   } catch (err) {
-    res.fail(err.details[0].message)
+    res.fail(message.Error);
+  } finally {
+    await db.close(); 
   }
-})
+});
 
+// PUT - Kullanıcı Güncelleme
 router.put('/:id', async (req, res) => {
-  const { id } = req.params
-  const { name, surname } = req.body
-
   try {
-    await userSchema.validateAsync({ name, surname })
-    const result = await db.run(
-      'UPDATE users SET name = ?, surname = ?, WHERE id = ?', //buraya bak
-      [name, surname, id])
-    if (result.changes > 0) {
-      const user = await db.get('SELECT * FROM users WHERE id = ?', id)
-      res.success(user)
-    } else {
-      res.fail(`User with id ${id} not found`)
+    const { name, surname } = req.body;
+    const id = req.params.id;
+    const { error } = userSchema.validate({ name, surname });
+    if (error) {
+      res.fail(messages.Try_Again);
     }
+    await db.open('User.db');
+    await db.run(`UPDATE users SET name = ?, surname = ? WHERE id = ?`, [name, surname, id]);
+    const data = await db.get(`SELECT * FROM users WHERE id = ?`, [id]);
+    res.success(data, messages.Successful);
   } catch (err) {
-    res.fail(err.details[0].message)
+    res.fail(messages.Try_Again);
+  } finally {
+    await db.close(); 
   }
-})
+});
 
+// DELETE - Kullanıcı Silme
 router.delete('/:id', async (req, res) => {
-  const { id } = req.params
-  const result = await db.run('DELETE FROM users WHERE id = ?', id)
-  if (result.changes > 0) {
-    res.success(`User with id ${id} deleted successfully`)
-  } else {
-    res.fail(`User with id ${id} not found`)
+  try {
+    const id = req.params.id;
+    await db.open('User.db');
+    await db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, surname TEXT NOT NULL)");
+    const data = await db.run(`DELETE FROM users WHERE id = ?`, [id]);
+    if (!data.changes) {
+      return res.fail(messages.Try_Again);
+    }
+    res.success(messages.Successful);
+  } catch (err) {
+    res.fail(messages.Try_Again);
+  } finally {
+    await db.close(); // veritabanı bağlantısını kapatır
   }
-})
+});
 
 module.exports = router;

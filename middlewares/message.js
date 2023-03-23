@@ -1,27 +1,15 @@
-const messages = {
-  "Error": "Hata",
-  "Try_Again": "Tekrar deneyin",
-  "Success": "Başarılı"
-};
+module.exports =
+  messages = {
+    Error: "Hata",
+    Try_Again: "Tekrar deneyin",
+    Successful: "İşlem başarılı.",
+    NotFound:"Bulunamadı."
+  };
 
-const messageMiddleware = (req, res, next) => {
-  // messagelar objesinden messageı alırız
-  const message = messages[req.message];
+// const messageMiddleware = (req, res, next) => {
+//   // messagelar objesinden messageı alırız
+//   const message = messages[req.message];
 
-  // mesajı req objesine ekledik
-  req.message = message;
-}
-
-module.exports = messageMiddleware;
-
-
-// const message = (err, req, res, next) => {
-//   if (err) {
-//     res.locals.status = 'error';
-//     res.locals.message = err.message;
-//   } else {
-//     res.locals.status = 'success';
-//     res.locals.message = null;
-//   }
-//   next();
-// };
+//   // mesajı req objesine ekledik
+//   req.message = message;
+// }
