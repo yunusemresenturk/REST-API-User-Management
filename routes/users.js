@@ -1,11 +1,7 @@
 const express = require('express');
-const { PromisedDatabase } = require('promised-sqlite3');
-const { promisify } = require('util');
 const Joi = require('joi');
 const router = express.Router();
-const db = new PromisedDatabase();
-
-
+const { getAllUsers, getUserById, getUserByName, deleteUserById, postUser, putUserById } = require('../db');
 
 // JOI Şeması
 const userSchema = Joi.object({
@@ -16,12 +12,10 @@ const userSchema = Joi.object({
 // GET - Tüm Kullanıcılar
 router.get('/', async (req, res) => {
   try {
-    await db.open('User.db');
-    await db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, surname TEXT NOT NULL)");
-    const data = await db.all('SELECT * FROM users');
-    res.success(data, messages.Successful);
+    const data = await getAllUsers();
+    res.json(data);
   } catch (err) {
-    res.fail(messages.Try_Again);
+    res.success(data, messages.Successful);
   }
 });
 
@@ -29,83 +23,58 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    await db.open('User.db');
-    const data = await db.get(`SELECT * FROM users WHERE id = ?`, [id]);
-    if (data)
-      return res.success(data, messages.Successful);
-    return res.fail(messages.NotFound);
-  } catch (err) {
-    res.fail(messages.Error);
+    const data = await getUserById(id);
+    if (data.success)
+      return res.json(data);
+    return res.status(404).json({ message: messages.NotFound });
+  } catch (err) { 
+    res.status(500).json({ message: err.message });
   }
 });
 
-// GET - İsme Göre Filtreleme
-router.get('/search/:name', async (req, res) => {
+//GET filter by name
+router.get('/:name', async (req, res) => {
   try {
     const name = req.params.name;
-    await db.open('User.db');
-    const data = await db.all(`SELECT * FROM users WHERE name LIKE '${name}%'`);
-    res.success(data, messages.Successful);
+    const data = await getUserByName(name);
+    if (data.success)
+      return res.json(data);
+    return res.status(404).json({ message: messages.NotFound });
   } catch (err) {
-    res.fail(messages.Try_Again);
-  } finally {
-    await db.close();
+    res.status(500).json({ message: err.message });
   }
 });
 
 // POST - Kullanıcı Oluşturma
-router.post('/', async (req, res) => {
-  try {
-    const { name, surname } = req.body;
-    const { error } = userSchema.validate({ name, surname });
-    if (error)
-      return res.fail(messages.Try_Again);
-    await db.open('User.db');
-    const data = await db.run(`INSERT INTO users(name, surname) VALUES(?, ?)`, [name, surname]);
-    res.success(data, messages.Successful);
-  } catch (err) {
-    res.fail(message.Error);
-  } finally {
-    await db.close(); 
-  }
-});
+router.post('/', async(req, res) => {
+  const { success, data } = await postUser(req.body)
 
-// PUT - Kullanıcı Güncelleme
+  if(success){
+      return res.json({success, data})
+  }
+
+  return res.status(500).json({success: false, message: 'Error'})
+})
+
+//Update User by Id
 router.put('/:id', async (req, res) => {
-  try {
-    const { name, surname } = req.body;
-    const id = req.params.id;
-    const { error } = userSchema.validate({ name, surname });
-    if (error) {
-      res.fail(messages.Try_Again);
-    }
-    await db.open('User.db');
-    await db.run(`UPDATE users SET name = ?, surname = ? WHERE id = ?`, [name, surname, id]);
-    const data = await db.get(`SELECT * FROM users WHERE id = ?`, [id]);
-    res.success(data, messages.Successful);
-  } catch (err) {
-    res.fail(messages.Try_Again);
-  } finally {
-    await db.close(); 
+  const { id } = req.params
+  const user = req.body
+  const { success, data } = await putUserById(id, user)
+  if (success) {
+    return res.json({ success, data })
   }
-});
+  return res.status(500).json({ success: false, message: 'Error'})
+})
 
-// DELETE - Kullanıcı Silme
+// Delete User by Id
 router.delete('/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    await db.open('User.db');
-    await db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, surname TEXT NOT NULL)");
-    const data = await db.run(`DELETE FROM users WHERE id = ?`, [id]);
-    if (!data.changes) {
-      return res.fail(messages.Try_Again);
-    }
-    res.success(messages.Successful);
-  } catch (err) {
-    res.fail(messages.Try_Again);
-  } finally {
-    await db.close(); // veritabanı bağlantısını kapatır
+  const { id } = req.params
+  const { success, data } = await deleteUserById(id)
+  if (success) {
+    return res.json({ success, data })
   }
-});
+  return res.status(500).json({ success: false, message: 'Error'})
+})
 
 module.exports = router;

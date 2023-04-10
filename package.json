@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
+    "@aws-sdk/lib-dynamodb": "^3.309.0",
+    "aws-sdk": "^2.1353.0",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "fs": "0.0.1-security",
     "joi": "^17.8.4",
-    "lodash": "^4.17.21",
+    "mongodb": "^5.2.0",
+    "mongoose": "^7.0.3",
     "morgan": "^1.10.0",
     "morgan-body": "^2.6.8",
-    "nodemon": "^2.0.21",
-    "promised-sqlite3": "^1.2.0",
-    "sqlite3": "^5.1.6"
+    "nodemon": "^2.0.21"
   },
-  "devDependencies": {},
   "scripts": {
     "start": "node index.js",
     "server": "nodemon index.js",

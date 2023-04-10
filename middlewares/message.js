@@ -12,4 +12,4 @@ module.exports =
 
 //   // mesajı req objesine ekledik
 //   req.message = message;
-// }
+// };
